@@ -1,0 +1,9 @@
+FROM blyss/proxy:latest
+
+CMD [ \
+	"/enclave/nitriding", \
+	"-fqdn", "pcproxy.blyss.dev", \
+	# "-acme", \
+	"-appwebsrv", "http://127.0.0.1:8081", \
+	"-appcmd", "uvicorn src.proxy:app --host 127.0.0.1 --port 8081 --log-level debug" \
+]
