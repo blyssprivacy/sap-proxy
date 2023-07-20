@@ -1,0 +1,7 @@
+{
+    "enclave_name": "proxy-prod",
+    "cpu_count": 2,
+    "memory_mib": 5600,
+    "eif_path": "./build/proxy-prod.eif",
+    "enclave_cid": 16
+}

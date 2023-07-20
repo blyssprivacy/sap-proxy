@@ -10,15 +10,12 @@ def gen_nonce() -> bytes:
     return np.random.default_rng().bytes(12)
 
 
-def np_csprng(key: bytes, nonce: Optional[int], length: int) -> np.ndarray:
+def np_csprng(key: bytes, nonce: bytes, length: int) -> np.ndarray:
     # Set up AES cipher
     if len(key) != 32:
         raise ValueError("Key must be 32 bytes")
-    nonce_bytes = (
-        nonce.to_bytes(16, "big") if nonce is not None else b"\x00" * 16
-    )  # Ensure the nonce is exactly 16 bytes
     cipher = Cipher(
-        algorithms.AES(key), modes.CTR(nonce_bytes), backend=default_backend()
+        algorithms.AES(key), modes.CTR(nonce), backend=default_backend()
     )
 
     # Get the number of bytes we need to generate

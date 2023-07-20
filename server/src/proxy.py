@@ -172,7 +172,6 @@ async def proxy(path: str, request: Request):
     if path.startswith("databases"):
         upstream = PINECONE_CONTROLLER_URL
 
-    print(f"passthrough to {upstream}/{path}")
     response = await forward_to_upstream(path, request, upstream=upstream)
 
     return Response(

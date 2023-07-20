@@ -1,21 +1,28 @@
+import json
+import os
+import sys
+
 import numpy as np
 
-from .pc import PineconeQuery, PineconeVector, PineconeProxy
+from src.main import PineconeProxy
 
 D = 512
+
+# Pinecone API key must be for the us-east-1-aws environment!
+PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "exampleapikey")
+proxy_url = sys.argv[1]
 
 pcproxy = PineconeProxy(
     index_name="blysstest",
     dim=D,
-    pinecone_api_key="e0a80619-a212-4d7f-95d4-ca67325d1ce5",
+    pinecone_api_key=PINECONE_API_KEY,
     data_key=b"\x00" * 32,
+    proxy_url=proxy_url,
     beta=0.1,
-    proxy_url="http://localhost:8081",
 )
 
-
 # Generate vectors that lie along the diagonal of the unit hypercube.
-# Basic sanity test: neighbors in sequence id are also nearest neighbors in vector space.
+# Basic sanity test: neighbors in sequence id will also be nearest neighbors in plaintext space.
 N = 100
 _magnitudes = np.arange(0, N, dtype=np.float32).reshape(N, 1)
 _direction = np.ones((1, D), dtype=np.float32)
@@ -24,24 +31,24 @@ np_vectors = _magnitudes @ _direction
 # normalize by largest magnitude, so all vector lengths are in the range [0, 1]
 np_vectors /= np.linalg.norm(np_vectors[-1])
 
+# Prepare data for Pinecone's REST API
 vectors = [
-    PineconeVector(
-        id=str(i),
-        values=np_vectors[i, :].tolist(),
-        metadata={"arbitrary": "data"},
-    ).model_dump(exclude_none=True)
+    {
+        "id": str(i),
+        "values": np_vectors[i, :].tolist(),
+        "metadata": {"arbitrary": "data"},
+    }
     for i in range(N)
 ]
-
-upsert = {"namespace": "default", "vectors": vectors}
-r = pcproxy.client.post(f"{pcproxy.url}/vectors/upsert", json=upsert)
+# pcproxy.client is a httpx Client instance; near-identical API to the common "requests" Client
+r = pcproxy.client.post(
+    f"{pcproxy.url}/vectors/upsert", json={"namespace": "default", "vectors": vectors}
+)
 assert r.is_success
 
-query = PineconeQuery(
-    namespace="default",
-    topK=3,
-    values=vectors[0]["values"],
-).model_dump(exclude_none=True)
+
+# We query for vector id 0, so will get items with indices near zero
+query = {"namespace": "default", "topK": 3, "values": vectors[0]["values"]}
 
 r = pcproxy.client.post(f"{pcproxy.url}/query", json=query)
 rj = r.json()

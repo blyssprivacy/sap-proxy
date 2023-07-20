@@ -1,14 +1,19 @@
 docker:
 	docker build . -t blyss/proxy
 
-docker-test: docker
-	docker build . -t blyss/proxy-test -f ./config/Dockerfile.test
+docker-prod: docker
+	docker build . -t blyss/proxy-prod -f config/Dockerfile.prod
 
-docker-prod:
-	docker build . -t blyss/proxy-prod -f ./config/Dockerfile.prod
+server-prod: docker-prod
+	mkdir -p build
+	nitro-cli build-enclave --docker-uri blyss/proxy-prod:latest --output-file build/proxy-prod.eif
+	nitro-cli run-enclave --config config/nitro-config-prod.json
 
-test-server: docker-test
-	docker run -it --rm  --network=host --tmpfs /tmp --tmpfs /fakepersist blyss/proxy-test:latest
+server-test: docker
+	docker run -it --rm  --network=host blyss/proxy:latest /bin/bash /enclave/launch.sh 
 
-test-client:
-	python -m src.test
+client-test-local:
+	cd client && pipenv run python test.py http://localhost:8081
+
+client-test:
+	cd client && pipenv run python test.py https://pcproxy.blyss.dev
