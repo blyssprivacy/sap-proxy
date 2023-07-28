@@ -22,5 +22,5 @@ ENV PIPENV_VENV_IN_PROJECT=1
 RUN pipenv sync
 ENV PATH="/enclave/.venv/bin:$PATH"
 
-COPY server server/
-COPY config/launch.sh .
+COPY src src/
+COPY launch.sh .

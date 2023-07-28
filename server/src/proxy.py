@@ -1,12 +1,13 @@
 import base64
 import json
+import secrets
 from typing import Annotated, Any, Optional
 
 import httpx
 from fastapi import Body, FastAPI, Header, Request, Response
 
+from .sap import NONCE_LENGTH
 from .pc import PineconeQuery, PineconeResult, PineconeUpsert
-from .sap import gen_nonce
 
 app = FastAPI()
 
@@ -104,7 +105,7 @@ async def query(
 
     # apply SAP to plaintext query
     key = base64.b64decode(data_key)
-    nonce = gen_nonce()
+    nonce = secrets.token_bytes(NONCE_LENGTH)
     cipherquery = PineconeQuery(**plainquery.dict())
     cipherquery.apply_sap(key, beta=BETA, nonce=nonce)
     # force query params to allow effective unSAP
@@ -151,7 +152,7 @@ async def upsert(
     key = base64.b64decode(data_key)
     for v in upsert.vectors:
         # apply SAP
-        nonce = gen_nonce()
+        nonce = secrets.token_bytes(NONCE_LENGTH)
         v.apply_sap(key, beta=BETA, nonce=nonce)
 
     pcresponse = await forward_to_upstream(

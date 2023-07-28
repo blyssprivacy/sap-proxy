@@ -1,8 +1,8 @@
 docker:
-	docker build . -t blyss/proxy
+	docker build server -t blyss/proxy
 
 docker-prod: docker
-	docker build . -t blyss/proxy-prod -f config/Dockerfile.prod
+	docker build server -t blyss/proxy-prod -f config/Dockerfile.prod
 
 server-prod: docker-prod
 	mkdir -p build

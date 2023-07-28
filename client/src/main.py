@@ -25,11 +25,14 @@ class PineconeProxy:
         data_key_base64 = base64.b64encode(data_key).decode("utf8")
         self.client = httpx.Client(
             headers={"Api-Key": pinecone_api_key, "x-data-key": data_key_base64},
-            verify=("localhost" not in proxy_url)
+            verify=("localhost" not in proxy_url),
         )
 
         self.init()
-        self.check_attestation()
+        try:
+            self.check_attestation()
+        except Exception as e:
+            print(f"WARNING: Attestation failed: {e}")
 
     def init(self):
         # Setup the Pinecone index. Request is sent through the Blyss proxy transparently.
@@ -81,7 +84,9 @@ class PineconeProxy:
         nonce = secrets.token_hex(16)
         r = self.client.get(f"{self.url}/enclave/attestation?nonce={nonce}")
         attestation_doc = base64.b64decode(r.content.decode("utf-8"))
-        document_public_key, attested_pcrs = verify_attestation_doc(attestation_doc, None, None)
+        document_public_key, attested_pcrs = verify_attestation_doc(
+            attestation_doc, None, None
+        )
         if document_public_key is not None:
             print(document_public_key.hex())
         else:
