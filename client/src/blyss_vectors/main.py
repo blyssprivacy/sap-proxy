@@ -1,3 +1,4 @@
+from typing import Any, Optional
 import base64
 import time
 import secrets
@@ -16,15 +17,20 @@ class PineconeProxy:
         data_key: bytes,
         proxy_url: str,
         beta: float = 0.0,
+        region: str = "us-east1-aws",
     ):
         self.url = proxy_url
         self.index_name = index_name
         self.upstream_url = None
         self.dim = dim
         self.beta = beta
+        self.region = region
+
         data_key_base64 = base64.b64encode(data_key).decode("utf8")
+        self.secret = {"x-data-key": data_key_base64}
+
         self.client = httpx.Client(
-            headers={"Api-Key": pinecone_api_key, "x-data-key": data_key_base64},
+            headers={"Api-Key": pinecone_api_key},
             verify=("localhost" not in proxy_url),
         )
 
@@ -36,7 +42,9 @@ class PineconeProxy:
 
     def init(self):
         # Setup the Pinecone index. Request is sent through the Blyss proxy transparently.
-        pc_indices = self.client.get(f"{self.url}/databases").json()
+        r = self.client.get(f"{self.url}/databases")
+        r.raise_for_status()
+        pc_indices = r.json()
         if self.index_name not in pc_indices:
             print(f"Creating index {self.index_name}. May take minutes to be ready.")
             cfg = {

@@ -1,0 +1,28 @@
+name: Build Proxy Enclave Image
+on:
+  push:
+    branches:
+      - main 
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+
+    - name: Build production proxy image
+      id: docker_build
+      run: make docker-prod
+
+    - name: Get Docker image hash
+      run: |
+        IMAGE_HASH=$(docker inspect blyss/proxy-prod)
+        echo "Docker image hash: $IMAGE_HASH"

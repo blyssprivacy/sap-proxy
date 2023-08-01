@@ -1,8 +1,11 @@
+-include .env
+export
+
 docker:
 	docker build server -t blyss/proxy
 
 docker-prod: docker
-	docker build server -t blyss/proxy-prod -f config/Dockerfile.prod
+	docker build server -t blyss/proxy-prod -f server/Dockerfile.prod
 
 server-prod: docker-prod
 	mkdir -p build
@@ -12,8 +15,14 @@ server-prod: docker-prod
 server-test: docker
 	docker run -it --rm  --network=host blyss/proxy:latest /bin/bash /enclave/launch.sh 
 
-client-test-local:
-	cd client && pipenv run python test.py http://localhost:8081
 
-client-test:
-	cd client && pipenv run python test.py https://pcproxy.blyss.dev
+client/venv/bin/activate: client/pyproject.toml
+	python3 -m venv client/venv
+	./client/venv/bin/pip install -e ./client
+
+client-test-local: client/venv/bin/activate
+	./client/venv/bin/python client/test/basic.py http://localhost:8081
+
+client-test: client/venv/bin/activate
+	./client/venv/bin/python client/test/basic.py https://pcproxy.blyss.dev
+

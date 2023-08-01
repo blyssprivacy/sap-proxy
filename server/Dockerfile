@@ -6,11 +6,11 @@ FROM golang:1.20 as n3-builder
 WORKDIR /
 RUN git clone https://github.com/brave/nitriding-daemon.git
 RUN cd nitriding-daemon && git checkout $HASH_NITRIDING && \
-		CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -buildvcs=false -o nitriding
+		CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-buildid= -s -w"  -buildvcs=false -o nitriding
+RUN sha256sum /nitriding-daemon/nitriding
 
 
-
-FROM python:3.10@sha256:$HASH_PYTHON 
+FROM python:3.10@sha256:$HASH_PYTHON
 
 WORKDIR /enclave
 COPY --from=n3-builder /nitriding-daemon/nitriding .

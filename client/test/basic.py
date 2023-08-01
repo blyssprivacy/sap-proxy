@@ -4,7 +4,7 @@ import sys
 
 import numpy as np
 
-from src.main import PineconeProxy
+from blyss_vectors import PineconeProxy
 
 D = 512
 
@@ -41,8 +41,11 @@ vectors = [
     for i in range(N)
 ]
 # pcproxy.client is a httpx Client instance; near-identical API to the common "requests" Client
+# need to explicitly include the data key from pcproxy
 r = pcproxy.client.post(
-    f"{pcproxy.url}/vectors/upsert", json={"namespace": "default", "vectors": vectors}
+    f"{pcproxy.url}/vectors/upsert",
+    headers=pcproxy.secret,
+    json={"namespace": "default", "vectors": vectors},
 )
 assert r.is_success
 
@@ -50,7 +53,7 @@ assert r.is_success
 # We query for vector id 0, so will get items with indices near zero
 query = {"namespace": "default", "topK": 3, "values": vectors[0]["values"]}
 
-r = pcproxy.client.post(f"{pcproxy.url}/query", json=query)
+r = pcproxy.client.post(f"{pcproxy.url}/query", headers=pcproxy.secret, json=query)
 rj = r.json()
 if "ciphermatches" in rj:
     print("Raw Results in encrypted space:")

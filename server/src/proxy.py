@@ -2,6 +2,7 @@ import base64
 import json
 import secrets
 from typing import Annotated, Any, Optional
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import Body, FastAPI, Header, Request, Response
@@ -19,6 +20,12 @@ BETA = 0.1
 DataKey = Annotated[
     str, Header(..., alias="x-data-key", description="The data key, encoded as base64.")
 ]
+
+
+def resolve_controller_from_upstream(upstream_url: str) -> str:
+    # parse the upstream URL, find the hostname immediately preceding pinecone.io, and use that as the controller
+    controller_name = urlparse(upstream_url).netloc.split(".")[-3]
+    return f"https://controller.{controller_name}.pinecone.io"
 
 
 @app.post("/blyss/setup")
@@ -43,10 +50,12 @@ async def set_upstream(
         ),
     ] = 0.0,
 ):
-    global UPSTREAM_URL, BETA
+    global UPSTREAM_URL, PINECONE_CONTROLLER_URL, BETA
     UPSTREAM_URL = upstream
+    PINECONE_CONTROLLER_URL = resolve_controller_from_upstream(upstream)
     BETA = beta
     print(f"UPSTREAM_URL set to {UPSTREAM_URL}")
+    print(f"PINECONE_CONTROLLER_URL set to {PINECONE_CONTROLLER_URL}")
     print(f"BETA set to {BETA}")
 
 
@@ -168,9 +177,11 @@ async def upsert(
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy(path: str, request: Request):
-    # if first path component is "databases", forward to Pinecone controller
-    upstream = UPSTREAM_URL
-    if path.startswith("databases"):
+    # Pinecone vector ops go directly to the index server
+    if path.startswith("vectors") or path.startswith("describe_index_stats"):
+        upstream = UPSTREAM_URL
+    else:
+        # all other Pinecone API calls go to the general controller
         upstream = PINECONE_CONTROLLER_URL
 
     response = await forward_to_upstream(path, request, upstream=upstream)
