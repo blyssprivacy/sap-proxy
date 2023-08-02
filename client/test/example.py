@@ -8,17 +8,19 @@ from blyss_vectors import PineconeProxy
 
 D = 512
 
-# Pinecone API key must be for the us-east-1-aws environment!
+# Pinecone API keys are region-specific!
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY", "exampleapikey")
-proxy_url = sys.argv[1]
+PINECONE_REGION = "us-east-1-aws"
+BLYSS_PROXY_URL = sys.argv[1]
 
 pcproxy = PineconeProxy(
     index_name="blysstest",
-    dim=D,
     pinecone_api_key=PINECONE_API_KEY,
-    data_key=b"\x00" * 32,
-    proxy_url=proxy_url,
+    pinecone_region=PINECONE_REGION,
+    secret_key=b"\x00" * 32,
+    proxy_url=BLYSS_PROXY_URL,
     beta=0.1,
+    dim=D,  # only needed if creating a new index
 )
 
 # Generate vectors that lie along the diagonal of the unit hypercube.

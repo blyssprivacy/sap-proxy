@@ -21,8 +21,8 @@ client/venv/bin/activate: client/pyproject.toml
 	./client/venv/bin/pip install -e ./client
 
 client-test-local: client/venv/bin/activate
-	./client/venv/bin/python client/test/basic.py http://localhost:8081
+	./client/venv/bin/python client/test/example.py http://localhost:8081
 
 client-test: client/venv/bin/activate
-	./client/venv/bin/python client/test/basic.py https://pcproxy.blyss.dev
+	./client/venv/bin/python client/test/example.py https://pcproxy.blyss.dev
 

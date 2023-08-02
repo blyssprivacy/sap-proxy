@@ -12,22 +12,22 @@ class PineconeProxy:
     def __init__(
         self,
         index_name: str,
-        dim: int,
         pinecone_api_key: str,
-        data_key: bytes,
+        pinecone_region: str,
+        secret_key: bytes,
         proxy_url: str,
         beta: float = 0.0,
-        region: str = "us-east1-aws",
+        dim: Optional[int] = None,
     ):
         self.url = proxy_url
         self.index_name = index_name
         self.upstream_url = None
         self.dim = dim
         self.beta = beta
-        self.region = region
+        self.controller_url = f"https://controller.{pinecone_region}.pinecone.io"
 
-        data_key_base64 = base64.b64encode(data_key).decode("utf8")
-        self.secret = {"x-data-key": data_key_base64}
+        secret_key_base64 = base64.b64encode(secret_key).decode("utf8")
+        self.secret = {"x-data-key": secret_key_base64}
 
         self.client = httpx.Client(
             headers={"Api-Key": pinecone_api_key},
@@ -41,12 +41,15 @@ class PineconeProxy:
             print(f"WARNING: Attestation failed: {e}")
 
     def init(self):
-        # Setup the Pinecone index. Request is sent through the Blyss proxy transparently.
-        r = self.client.get(f"{self.url}/databases")
+        # Setup the Pinecone index. Request is sent directly to Pinecone.
+        r = self.client.get(f"{self.controller_url}/databases")
         r.raise_for_status()
         pc_indices = r.json()
+
+        # Convenience: create index if it doesn't exist. Recommend creation ahead of time; this is slow.
         if self.index_name not in pc_indices:
             print(f"Creating index {self.index_name}. May take minutes to be ready.")
+            assert self.dim is not None, "Must specify dimension to create new index."
             cfg = {
                 "name": self.index_name,
                 "dimension": self.dim,
@@ -55,7 +58,7 @@ class PineconeProxy:
                 "replicas": 1,
                 "pod_type": "s1.x1",
             }
-            r = self.client.post(f"{self.url}/databases", json=cfg)
+            r = self.client.post(f"{self.controller_url}/databases", json=cfg)
             assert r.is_success
 
         # Pinecone assigns a unique hostname for each index.
@@ -64,16 +67,16 @@ class PineconeProxy:
         POLLWAIT = 5
         i = 0
         while i < TIMEOUT:
-            r = self.client.get(f"{self.url}/databases/{self.index_name}")
+            r = self.client.get(f"{self.controller_url}/databases/{self.index_name}")
             index_status = r.json()["status"]
             if index_status["ready"]:
                 self.upstream_url = f"https://{index_status['host']}"
                 break
             time.sleep(POLLWAIT)
             i += POLLWAIT
-        assert self.upstream_url is not None
+        assert self.upstream_url is not None, "Timed out waiting for Pinecone index."
 
-        # Proxy setup: point it to the live Pinecone server, and set the beta parameter.
+        # Proxy setup: point it to the live Pinecone index server, and set the beta parameter.
         r = self.client.post(
             f"{self.url}/blyss/setup",
             json={"upstream": self.upstream_url, "beta": self.beta},

@@ -12,8 +12,8 @@ from .pc import PineconeQuery, PineconeResult, PineconeUpsert
 
 app = FastAPI()
 
-PINECONE_CONTROLLER_URL = "https://controller.us-east-1-aws.pinecone.io"
-UPSTREAM_URL = "https://example.com"
+PINECONE_CONTROLLER_URL = None
+UPSTREAM_URL = None
 BETA = 0.1
 
 
@@ -177,6 +177,9 @@ async def upsert(
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy(path: str, request: Request):
+    assert (
+        UPSTREAM_URL and PINECONE_CONTROLLER_URL
+    ), "Must set upstream with POST /blyss/setup."
     # Pinecone vector ops go directly to the index server
     if path.startswith("vectors") or path.startswith("describe_index_stats"):
         upstream = UPSTREAM_URL
